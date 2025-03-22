@@ -1,15 +1,16 @@
 package lru
 
 import (
-	"container/list"
 	"sync"
+
+	lowlevel "github.com/NikoMalik/low-level-functions"
 )
 
 type LRU struct {
-	maxSize int
-	items   map[string]*list.Element
-	list    *list.List
+	items   map[string]*Element[string]
+	list    *List[string]
 	mu      sync.Mutex
+	maxSize int
 }
 
 func New(maxSize int) *LRU {
@@ -18,8 +19,8 @@ func New(maxSize int) *LRU {
 	}
 	return &LRU{
 		maxSize: maxSize,
-		items:   make(map[string]*list.Element, maxSize),
-		list:    list.New(),
+		items:   make(map[string]*Element[string], maxSize),
+		list:    NewList[string](),
 	}
 }
 
@@ -28,19 +29,19 @@ func (l *LRU) GetOrAdd(keyB []byte) string {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	element, ok := l.items[string(keyB)]
+	element, ok := l.items[lowlevel.String(keyB)]
 	if ok {
 		l.list.MoveToFront(element)
-		return element.Value.(string)
+		return element.Value
 	}
 
 	if len(l.items) >= l.maxSize {
 		element = l.list.Back()
 		l.list.Remove(element)
-		delete(l.items, element.Value.(string))
+		delete(l.items, element.Value)
 	}
 
-	keyS := string(keyB)
+	keyS := lowlevel.String(keyB)
 	element = l.list.PushFront(keyS)
 	l.items[keyS] = element
 	return keyS
